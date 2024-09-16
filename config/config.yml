@@ -1,0 +1,122 @@
+# general settings
+name: FSAD_AD_Net-debug
+seed: ~ # ~ 代表空
+scale: 2 # upscale factor
+
+# 绝对路径
+path:
+  # ~ 代表空 
+  # 有则默认使用，无则自动创建
+  # root: ~ # 当前工程的绝对路径（在脚本中加入，可以恢复分布式训练的状态，不会出错）
+  resume_state: ~ # /home/aorus/Desktop/Code/WJ-AI/experiments/FSAD_AD_Net-debug/training_states/ADNet_60_53.state # 恢复的训练过程的状态 training_states（恢复）
+  strict_load: experiments/FSAD_AD_Net-debug/networks/ADNet_60_46.pth # 严格加载的预训练模型 
+  pretrain_load: ~ # /home/aorus/Desktop/Code/WJ-AI/experiments/ADNet_pre_ok.pth # 加载预训练网络
+
+model: 
+  name: AD
+  device: cpu # cpu or gpu
+  is_train: true
+  pre_train: ture
+  # DP
+  # # dist=>false（单进程/多线程）
+  # # num_gpu>1
+  # DDP
+  # # dist=>ture（多进程）
+  dist: false # 决定是否分布式训练 DDP模式
+  num_node: 1 # 节点数
+  num_gpu: 1 # set num_gpu: 0 for cpu mode
+
+# dist training settings
+dist_params:
+  launcher: pytorch # 启动分布式（torch，spwan），torch.dist.launch 采用 ,none=>禁用dist
+  backend: nccl
+  rank: ~ # 自动获取
+  world_size: ~ # 自动获取
+  port: 29500 # 另一种方式启动，需要手动指定端口
+
+# ddp
+find_unused_parameters: false # DDP会在每次前向传播（forward pass）后检查模型的参数，以确定哪些参数是被使用的，哪些是未使用的。这个过程是通过分析模型的计算图来完成的。
+
+datasets:
+  dataset_name: mvtec_dataset
+  dataset_type: FSADDataset # mvtec_dataset下的FSADDataset实例
+  # dataset_path: /home/aorus/Desktop/Code/datasets/MVTec/MVTec-AD
+  dataset_path: dataset
+  support_path: data/support
+  # 数据集
+  size: 256 # 训练图片大小=>256
+  label: transistor
+  shot: 5
+  batch: 3 # 自定义的批大小:只能为1，否则过不了dcn
+  # 数据集增强
+  use_flip: true
+  use_rot: true
+  # data loader
+  batch_size_per_gpu: 1
+  num_worker_per_cpu: 0 # 0 才能加载噪声
+  dataset_enlarge_ratio: 1
+  prefetch_mode: ~ # 这是使用预取器提高内存访问效率，PrefetchDataLoader，目前不考虑
+
+# network structures
+network:
+  name: ADNet
+  stn_mode: 'rotation_translation'
+  num_in_ch: 3
+  num_out_ch: 3
+  num_feat: 256
+  num_block: 32
+  upscale: 2
+  res_scale: 0.1
+  img_range: 255.
+  rgb_mean: [0.4488, 0.4371, 0.4040]
+
+# trainner settings
+trainner:
+  name: ADTrainer
+  train_epochs: 300
+  pretrain_epochs: 200
+  test_rounds: 5 # 测试轮数(不同于epochs)
+  batch_size: 1 # per gpu 默认 1
+  warmup: -1  # no warm up
+  dcn_lr_mul: 0 # 训练dcn（>1）=> 训练的步数 lr*dcn_lr_mul
+  reco_lr_mul: 2 # 同上
+  optimizer:
+    name: Adam
+    lr: !!float 5e-3 # 1e-4 初始学习率（浮点数）
+    weight_decay: 0 # 权重衰减（L2 正则化）的强度（浮点数）
+    betas: [0.5,0.999] # [0.9,0.99] 计算运行的系数
+  optimizer_rd:
+    name: Adam
+    lr: !!float 1e-2 # 1e-4 初始学习率（浮点数）
+    weight_decay: 0 # 权重衰减（L2 正则化）的强度（浮点数）
+    betas: [0.5,0.999] # [0.9,0.99] 计算运行的系数
+  optimizer_reco:
+    name: Adam
+    lr: !!float 1e-2 # 1e-4 初始学习率（浮点数）
+    weight_decay: 0 # 权重衰减（L2 正则化）的强度（浮点数）
+    betas: [0.5,0.999] # [0.9,0.99] 计算运行的系数
+  scheduler:
+    name: MultiStepLR
+    milestones: [10,25,45] # [25,35,50] # 一个包含学习率下降里程碑的元组
+    gamma: 0.5 # 在训练过程中，当训练的 epoch 数达到 300 时，学习率将乘以 0.5，变为 0.05。类似地，当训练的 epoch 数达到 500 和 800 时，学习率将分别乘以 0.5，变为 0.025 和 0.0125。
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+train:
+
+test:
+  
+# logging settings
+logger:
+  name: basicad
+  # debug 选项中重新设置
+  print_freq: 100
+  save_checkpoint_freq: !!float 3e3 # !! 是YAML中的严格类型标签，它用于强制YAML解析器将随后的值转换为指定的类型=> 3 * 10**3
+  use_tb_logger: false
+  wandb:
+    project: ~
+    resume_id: ~

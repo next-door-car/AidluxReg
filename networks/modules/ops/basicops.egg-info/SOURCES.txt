@@ -1,0 +1,13 @@
+README.md
+setup.py
+basicops.egg-info/PKG-INFO
+basicops.egg-info/SOURCES.txt
+basicops.egg-info/dependency_links.txt
+basicops.egg-info/not-zip-safe
+basicops.egg-info/requires.txt
+basicops.egg-info/top_level.txt
+dcn/__init__.py
+dcn/deform_conv.py
+dcn/src/deform_conv_cuda.cpp
+dcn/src/deform_conv_cuda_kernel.cu
+dcn/src/deform_conv_ext.cpp
